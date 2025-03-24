@@ -25,6 +25,9 @@ SELECTED_PIECE = (255, 255, 0, 180)  # Brighter yellow for selected piece
 VALID_MOVE_HIGHLIGHT = (124, 252, 0, 160)  # Bright green for valid moves
 LAST_MOVE = (135, 206, 250, 160)  # Light blue for showing last move
 CHECKED_KING = (255, 0, 0, 180)  # Red highlight for checked king
+AI_MOVE_HIGHLIGHT = (255, 165, 0, 160)  # Orange highlight for AI moves
+AI_MOVE_START = (255, 140, 0, 180)  # Darker orange for AI move start
+AI_MOVE_END = (255, 165, 0, 180)  # Lighter orange for AI move end
  
 # Menu settings
 MENU_BG = (25, 25, 35)  # Darker background
@@ -166,16 +169,38 @@ def draw_menu():
 def menu_loop():
     player_button, ai_button, start_button = draw_menu()
     game_mode = None
+    ai_difficulty = None
     clock = pygame.time.Clock()
+    current_page = "main"  # Track which page we're on
    
     # Initialize button states
     player_button.selected = False
     ai_button.selected = False
     start_button.selected = False
-   
+    
+    # Create difficulty buttons
+    button_width = 300
+    button_height = 60
+    button_spacing = 20
+    
+    # Position buttons in the center of the screen vertically
+    start_y = (WINDOW_SIZE - (3 * button_height + 2 * button_spacing)) // 2
+    
+    easy_button = Button(WINDOW_SIZE//2 - button_width//2, start_y, button_width, button_height, "Easy", MENU_BUTTON_BG)
+    medium_button = Button(WINDOW_SIZE//2 - button_width//2, start_y + button_height + button_spacing, button_width, button_height, "Medium", MENU_BUTTON_BG)
+    hard_button = Button(WINDOW_SIZE//2 - button_width//2, start_y + 2 * (button_height + button_spacing), button_width, button_height, "Hard", MENU_BUTTON_BG)
+    
+    back_button = Button(MENU_MARGIN, MENU_MARGIN, 100, 40, "Back", MENU_BUTTON_BG)
+    
+    difficulty_buttons = [easy_button, medium_button, hard_button]
+    for button in difficulty_buttons:
+        button.selected = False
+        button.target_offset = 50
+        button.animation_offset = 50
+
     # Animation states
     buttons = [player_button, ai_button, start_button]
-    for i, button in enumerate(buttons):
+    for button in buttons:
         button.target_offset = 50
         button.animation_offset = 50
    
@@ -189,63 +214,45 @@ def menu_loop():
         for i in range(MENU_MARGIN, WINDOW_SIZE - MENU_MARGIN, 40):
             pygame.draw.line(screen, (35, 35, 45), (MENU_MARGIN, i), (WINDOW_SIZE - MENU_MARGIN, i))
        
-        # Draw title with enhanced shadow effect
-        font_title = pygame.font.SysFont('Arial', 72, bold=True)
-        # Multiple shadow layers for depth
-        for offset in range(3, 0, -1):
-            shadow = font_title.render("Chess Game", True, (0, 0, 0))
-            shadow_rect = shadow.get_rect(center=(WINDOW_SIZE // 2 + offset, MENU_MARGIN + 102 + offset))
-            screen.blit(shadow, shadow_rect)
-        # Main text
-        title = font_title.render("Chess Game", True, MENU_TITLE_COLOR)
-        title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 100))
-        screen.blit(title, title_rect)
-       
-        # Draw buttons
-        player_button.draw(screen)
-        ai_button.draw(screen)
-       
-        # Only show start button and selection text if a mode is selected
-        if game_mode:
-            # Draw selection text with enhanced styling
-            font = pygame.font.SysFont('Arial', 28, bold=True)
-            mode_text = f"Selected: {'Player vs Player' if game_mode == 'player' else 'Player vs AI'}"
-            text_surface = font.render(mode_text, True, MENU_TEXT_COLOR)
-            text_rect = text_surface.get_rect(center=(WINDOW_SIZE // 2, ai_button.rect.bottom + 60))
+        if current_page == "main":
+            # Draw title
+            font_title = pygame.font.SysFont('Arial', 72, bold=True)
+            for offset in range(3, 0, -1):
+                shadow = font_title.render("Chess Game", True, (0, 0, 0))
+                shadow_rect = shadow.get_rect(center=(WINDOW_SIZE // 2 + offset, MENU_MARGIN + 102 + offset))
+                screen.blit(shadow, shadow_rect)
+            title = font_title.render("Chess Game", True, MENU_TITLE_COLOR)
+            title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 100))
+            screen.blit(title, title_rect)
            
-            # Draw background panel for selection text with animation
-            bg_rect = text_rect.copy()
-            bg_rect.inflate_ip(40, 20)
-           
-            # Add hover effect to the selection text
-            mouse_pos = pygame.mouse.get_pos()
-            if bg_rect.collidepoint(mouse_pos):
-                pygame.draw.rect(screen, MENU_BUTTON_HOVER, bg_rect)
-                pygame.draw.rect(screen, MENU_ACCENT_COLOR, bg_rect, 2)
-            else:
-                pygame.draw.rect(screen, MENU_BUTTON_BG, bg_rect)
-                pygame.draw.rect(screen, MENU_BORDER_COLOR, bg_rect, 2)
-           
-            # Draw text with shadow
-            shadow = font.render(mode_text, True, (0, 0, 0))
-            shadow_rect = shadow.get_rect(center=(text_rect.centerx + 2, text_rect.centery + 2))
-            screen.blit(shadow, shadow_rect)
-            screen.blit(text_surface, text_rect)
-           
-            # Add interactive elements to the selection text
-            if bg_rect.collidepoint(mouse_pos):
-                # Draw a small arrow indicator
-                arrow_points = [
-                    (text_rect.right + 10, text_rect.centery),
-                    (text_rect.right + 20, text_rect.centery - 5),
-                    (text_rect.right + 20, text_rect.centery + 5)
-                ]
-                pygame.draw.polygon(screen, MENU_ACCENT_COLOR, arrow_points)
-           
-            # Position and draw start button below selection text
-            start_button.rect.centerx = WINDOW_SIZE // 2
-            start_button.rect.top = text_rect.bottom + 40
-            start_button.draw(screen)
+            # Draw mode selection buttons
+            player_button.draw(screen)
+            ai_button.draw(screen)
+            
+            if game_mode == "player":
+                start_button.rect.centerx = WINDOW_SIZE // 2
+                start_button.rect.top = ai_button.rect.bottom + 40
+                start_button.draw(screen)
+                
+        elif current_page == "difficulty":
+            # Draw back button
+            back_button.draw(screen)
+            
+            # Draw difficulty selection title
+            font_title = pygame.font.SysFont('Arial', 48, bold=True)
+            title = font_title.render("Select Difficulty:", True, MENU_TITLE_COLOR)
+            title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 50))
+            screen.blit(title, title_rect)
+            
+            # Draw difficulty buttons
+            for button in difficulty_buttons:
+                button.draw(screen)
+            
+            # Show start button if difficulty is selected
+            if ai_difficulty:
+                start_button.rect.centerx = WINDOW_SIZE // 2
+                start_button.rect.top = hard_button.rect.bottom + 40
+                start_button.draw(screen)
        
         pygame.display.flip()
        
@@ -257,40 +264,56 @@ def menu_loop():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = event.pos
                
-                # Check button clicks with improved touch sensitivity
-                if player_button.rect.collidepoint(mouse_pos):
-                    game_mode = "player"
-                    player_button.selected = True
-                    ai_button.selected = False
-                    # Animate buttons
-                    player_button.target_offset = 0
-                    ai_button.target_offset = 0
-                   
-                elif ai_button.rect.collidepoint(mouse_pos):
-                    game_mode = "ai"
-                    ai_button.selected = True
-                    player_button.selected = False
-                    # Animate buttons
-                    player_button.target_offset = 0
-                    ai_button.target_offset = 0
-                   
-                elif game_mode and start_button.rect.collidepoint(mouse_pos):
-                    # Add click animation for start button
-                    start_button.rect.y += 5
-                    pygame.display.flip()
-                    pygame.time.wait(100)
-                    start_button.rect.y -= 5
-                    return game_mode
+                if current_page == "main":
+                    if player_button.rect.collidepoint(mouse_pos):
+                        game_mode = "player"
+                        ai_difficulty = None
+                        player_button.selected = True
+                        ai_button.selected = False
+                    
+                    elif ai_button.rect.collidepoint(mouse_pos):
+                        game_mode = "ai"
+                        current_page = "difficulty"  # Switch to difficulty page
+                        ai_button.selected = True
+                        player_button.selected = False
+                        
+                    elif game_mode == "player" and start_button.rect.collidepoint(mouse_pos):
+                        return game_mode, None
+                        
+                elif current_page == "difficulty":
+                    if back_button.rect.collidepoint(mouse_pos):
+                        current_page = "main"
+                        game_mode = None
+                        ai_difficulty = None
+                        for button in difficulty_buttons:
+                            button.selected = False
+                    
+                    for i, button in enumerate(difficulty_buttons):
+                        if button.rect.collidepoint(mouse_pos):
+                            ai_difficulty = ["easy", "medium", "hard"][i]
+                            for b in difficulty_buttons:
+                                b.selected = False
+                            button.selected = True
+                    
+                    if ai_difficulty and start_button.rect.collidepoint(mouse_pos):
+                        return game_mode, ai_difficulty
            
-            # Add hover effect for buttons with improved touch sensitivity
+            # Update hover states
             if event.type == pygame.MOUSEMOTION:
                 mouse_pos = event.pos
-                # Add a small hitbox extension for better touch sensitivity
-                extended_rect = start_button.rect.copy()
-                extended_rect.inflate_ip(20, 20)
-                player_button.hover = player_button.rect.collidepoint(mouse_pos)
-                ai_button.hover = ai_button.rect.collidepoint(mouse_pos)
-                start_button.hover = extended_rect.collidepoint(mouse_pos) if game_mode else False
+                
+                if current_page == "main":
+                    player_button.hover = player_button.rect.collidepoint(mouse_pos)
+                    ai_button.hover = ai_button.rect.collidepoint(mouse_pos)
+                    if game_mode == "player":
+                        start_button.hover = start_button.rect.collidepoint(mouse_pos)
+                
+                elif current_page == "difficulty":
+                    back_button.hover = back_button.rect.collidepoint(mouse_pos)
+                    for button in difficulty_buttons:
+                        button.hover = button.rect.collidepoint(mouse_pos)
+                    if ai_difficulty:
+                        start_button.hover = start_button.rect.collidepoint(mouse_pos)
        
         clock.tick(FPS)
  
@@ -470,6 +493,27 @@ def make_ai_move(board):
         board[start_pos[0]][start_pos[1]] = ''
         return True
     return False
+
+def make_easy_ai_move(board):
+    """Make a simple move for easy AI mode with some randomness"""
+    possible_moves = []
+    # Collect all possible moves for black pieces
+    for row in range(BOARD_SIZE):
+        for col in range(BOARD_SIZE):
+            piece = board[row][col]
+            if piece and piece[0] == 'black':
+                valid_moves = get_valid_moves(board, (row, col), piece)
+                for move in valid_moves:
+                    possible_moves.append(((row, col), move))
+    
+    if possible_moves:
+        # Randomly select a move from the possible moves
+        start_pos, end_pos = random.choice(possible_moves)
+        piece = board[start_pos[0]][start_pos[1]]
+        board[end_pos[0]][end_pos[1]] = piece
+        board[start_pos[0]][start_pos[1]] = ''
+        return True, (start_pos, end_pos)
+    return False, None
  
 def create_board():
     board = [['' for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
@@ -717,8 +761,15 @@ valid_moves = None
 ai_thinking = False
  
 # Menu loop to choose game mode
-game_mode = menu_loop()
+game_mode, ai_difficulty = menu_loop()
  
+# Add difficulty-based depth for minimax
+AI_DEPTH = {
+    "easy": 1,    # Reduced from 2 to 1 for easier gameplay
+    "medium": 3,
+    "hard": 4
+}
+
 # Optimize the game loop
 running = True
 clock = pygame.time.Clock()
@@ -799,22 +850,51 @@ while running:
         # If playing against AI, make AI move
         if current_player == 'black' and not ai_thinking and game_mode == 'ai':
             ai_thinking = True
-            start_pos = None
-            for row in range(BOARD_SIZE):
-                for col in range(BOARD_SIZE):
-                    if board[row][col] and board[row][col][0] == 'black':
-                        start_pos = (row, col)
-                        break
-                if start_pos:
-                    break
-            make_ai_move(board)
-            # Update last_move for AI moves
-            if start_pos:
-                for row in range(BOARD_SIZE):
-                    for col in range(BOARD_SIZE):
-                        if board[row][col] and board[row][col][0] == 'black' and (row, col) != start_pos:
-                            last_move = (start_pos, (row, col))
-                            break
+            
+            if ai_difficulty == "easy":
+                # Use simple random moves for easy mode
+                success, move = make_easy_ai_move(board)
+                if success:
+                    start_pos, end_pos = move
+            else:
+                # Calculate AI move with appropriate depth based on difficulty
+                depth = AI_DEPTH.get(ai_difficulty, 3)
+                _, best_move = minimax(board, depth, float('-inf'), float('inf'), False)
+                if best_move:
+                    start_pos, end_pos = best_move
+            
+            if 'start_pos' in locals() and 'end_pos' in locals():
+                # Add small delay before showing move
+                pygame.time.wait(300)  # 0.3 second delay
+                
+                # Draw the board with the starting position highlighted
+                s_start = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
+                s_start.set_alpha(180)
+                s_start.fill(AI_MOVE_START)
+                screen.blit(s_start, (start_pos[1] * SQUARE_SIZE, start_pos[0] * SQUARE_SIZE))
+                
+                # Draw the end position highlight
+                s_end = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
+                s_end.set_alpha(180)
+                s_end.fill(AI_MOVE_END)
+                screen.blit(s_end, (end_pos[1] * SQUARE_SIZE, end_pos[0] * SQUARE_SIZE))
+                
+                # Draw arrow from start to end
+                start_x = start_pos[1] * SQUARE_SIZE + SQUARE_SIZE // 2
+                start_y = start_pos[0] * SQUARE_SIZE + SQUARE_SIZE // 2
+                end_x = end_pos[1] * SQUARE_SIZE + SQUARE_SIZE // 2
+                end_y = end_pos[0] * SQUARE_SIZE + SQUARE_SIZE // 2
+                pygame.draw.line(screen, (255, 165, 0), (start_x, start_y), (end_x, end_y), 3)
+                
+                pygame.display.flip()
+                pygame.time.wait(200)  # Show highlight for 0.2 seconds
+                
+                # Make the actual move
+                piece = board[start_pos[0]][start_pos[1]]
+                board[end_pos[0]][end_pos[1]] = piece
+                board[start_pos[0]][start_pos[1]] = ''
+                last_move = (start_pos, end_pos)
+            
             current_player = 'white'
             ai_thinking = False
        
