@@ -9,7 +9,8 @@ pygame.init()
 # Constants
 WINDOW_SIZE = 680
 BOARD_SIZE = 8
-SQUARE_SIZE = WINDOW_SIZE // BOARD_SIZE
+SQUARE_SIZE = (WINDOW_SIZE - 100) // BOARD_SIZE  # Reduced square size to make room for player names
+BOARD_OFFSET_Y = 50  # Space for player names at top and bottom
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 HIGHLIGHT = (255, 255, 0, 128)
@@ -127,6 +128,62 @@ class Button:
         text_rect = text_surface.get_rect(center=animated_rect.center)
         surface.blit(text_surface, text_rect)
  
+class TextInput:
+    def __init__(self, x, y, width, height, default_text="", label=""):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.default_text = default_text
+        self.text = default_text
+        self.label = label
+        self.active = False
+        self.color = MENU_BUTTON_BG
+        self.border_color = MENU_BORDER_COLOR
+        self.text_color = MENU_TEXT_COLOR
+        self.font = pygame.font.SysFont('Arial', 32)
+        self.label_font = pygame.font.SysFont('Arial', 24)
+        self.first_click = True
+        
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                self.active = True
+                if self.first_click and self.text == self.default_text:
+                    self.text = ""
+                    self.first_click = False
+            else:
+                self.active = False
+                if self.text == "":
+                    self.text = self.default_text
+                    self.first_click = True
+        elif event.type == pygame.KEYDOWN and self.active:
+            if event.key == pygame.K_RETURN:
+                self.active = False
+            elif event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+            else:
+                # Only add character if it's not the default text
+                if self.first_click and self.text == self.default_text:
+                    self.text = event.unicode
+                    self.first_click = False
+                else:
+                    self.text += event.unicode
+                
+    def draw(self, surface):
+        # Draw label
+        label_surface = self.label_font.render(self.label, True, MENU_TEXT_COLOR)
+        label_rect = label_surface.get_rect(bottomleft=(self.rect.left, self.rect.top - 5))
+        surface.blit(label_surface, label_rect)
+        
+        # Draw input box
+        border_color = MENU_ACCENT_COLOR if self.active else self.border_color
+        pygame.draw.rect(surface, self.color, self.rect)
+        pygame.draw.rect(surface, border_color, self.rect, 2)
+        
+        # Draw text
+        text_color = MENU_TEXT_COLOR if not (self.first_click and self.text == self.default_text) else (128, 128, 128)
+        text_surface = self.font.render(self.text, True, text_color)
+        text_rect = text_surface.get_rect(center=self.rect.center)
+        surface.blit(text_surface, text_rect)
+
 def draw_menu():
     screen.fill(MENU_BG)
    
@@ -172,11 +229,22 @@ def menu_loop():
     ai_difficulty = None
     clock = pygame.time.Clock()
     current_page = "main"  # Track which page we're on
-   
+    player1_name = "Player 1"
+    player2_name = "Player 2"
+    
     # Initialize button states
     player_button.selected = False
     ai_button.selected = False
     start_button.selected = False
+    
+    # Create text input fields for player names
+    input_width = 300
+    input_height = 60
+    input_spacing = 60  # Increased spacing for labels
+    start_y = (WINDOW_SIZE - (2 * input_height + input_spacing)) // 2
+    
+    player1_input = TextInput(WINDOW_SIZE//2 - input_width//2, start_y, input_width, input_height, "Player 1", "White Player")
+    player2_input = TextInput(WINDOW_SIZE//2 - input_width//2, start_y + input_height + input_spacing, input_width, input_height, "Player 2", "Black Player")
     
     # Create difficulty buttons
     button_width = 300
@@ -229,11 +297,25 @@ def menu_loop():
             player_button.draw(screen)
             ai_button.draw(screen)
             
-            if game_mode == "player":
-                start_button.rect.centerx = WINDOW_SIZE // 2
-                start_button.rect.top = ai_button.rect.bottom + 40
-                start_button.draw(screen)
-                
+        elif current_page == "player_names":
+            # Draw back button
+            back_button.draw(screen)
+            
+            # Draw title
+            font_title = pygame.font.SysFont('Arial', 48, bold=True)
+            title = font_title.render("Enter Player Names", True, MENU_TITLE_COLOR)
+            title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 50))
+            screen.blit(title, title_rect)
+            
+            # Draw input fields with labels
+            player1_input.draw(screen)
+            player2_input.draw(screen)
+            
+            # Always show start button since we have default names
+            start_button.rect.centerx = WINDOW_SIZE // 2
+            start_button.rect.top = player2_input.rect.bottom + 40
+            start_button.draw(screen)
+            
         elif current_page == "difficulty":
             # Draw back button
             back_button.draw(screen)
@@ -267,19 +349,25 @@ def menu_loop():
                 if current_page == "main":
                     if player_button.rect.collidepoint(mouse_pos):
                         game_mode = "player"
-                        ai_difficulty = None
+                        current_page = "player_names"
                         player_button.selected = True
                         ai_button.selected = False
                     
                     elif ai_button.rect.collidepoint(mouse_pos):
                         game_mode = "ai"
-                        current_page = "difficulty"  # Switch to difficulty page
+                        current_page = "difficulty"
                         ai_button.selected = True
                         player_button.selected = False
                         
-                    elif game_mode == "player" and start_button.rect.collidepoint(mouse_pos):
-                        return game_mode, None
-                        
+                elif current_page == "player_names":
+                    if back_button.rect.collidepoint(mouse_pos):
+                        current_page = "main"
+                        game_mode = None
+                    elif start_button.rect.collidepoint(mouse_pos):
+                        player1_name = player1_input.text if player1_input.text != "" else "Player 1"
+                        player2_name = player2_input.text if player2_input.text != "" else "Player 2"
+                        return game_mode, None, player1_name, player2_name
+                    
                 elif current_page == "difficulty":
                     if back_button.rect.collidepoint(mouse_pos):
                         current_page = "main"
@@ -296,7 +384,12 @@ def menu_loop():
                             button.selected = True
                     
                     if ai_difficulty and start_button.rect.collidepoint(mouse_pos):
-                        return game_mode, ai_difficulty
+                        return game_mode, ai_difficulty, None, None
+            
+            # Handle text input events
+            if current_page == "player_names":
+                player1_input.handle_event(event)
+                player2_input.handle_event(event)
            
             # Update hover states
             if event.type == pygame.MOUSEMOTION:
@@ -305,8 +398,10 @@ def menu_loop():
                 if current_page == "main":
                     player_button.hover = player_button.rect.collidepoint(mouse_pos)
                     ai_button.hover = ai_button.rect.collidepoint(mouse_pos)
-                    if game_mode == "player":
-                        start_button.hover = start_button.rect.collidepoint(mouse_pos)
+                
+                elif current_page == "player_names":
+                    back_button.hover = back_button.rect.collidepoint(mouse_pos)
+                    start_button.hover = start_button.rect.collidepoint(mouse_pos)
                 
                 elif current_page == "difficulty":
                     back_button.hover = back_button.rect.collidepoint(mouse_pos)
@@ -536,7 +631,9 @@ def draw_board(screen, selected_piece=None, valid_moves=None, last_move=None):
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
             color = LIGHT_SQUARE if (row + col) % 2 == 0 else DARK_SQUARE
-            pygame.draw.rect(screen, color, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+            pygame.draw.rect(screen, color, (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2, 
+                                          row * SQUARE_SIZE + BOARD_OFFSET_Y, 
+                                          SQUARE_SIZE, SQUARE_SIZE))
    
     # Draw last move highlight
     if last_move:
@@ -545,7 +642,8 @@ def draw_board(screen, selected_piece=None, valid_moves=None, last_move=None):
             s = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
             s.set_alpha(128)
             s.fill(LAST_MOVE)
-            screen.blit(s, (pos[1] * SQUARE_SIZE, pos[0] * SQUARE_SIZE))
+            screen.blit(s, (pos[1] * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                          pos[0] * SQUARE_SIZE + BOARD_OFFSET_Y))
    
     # Draw valid moves with better visibility
     if valid_moves:
@@ -553,9 +651,12 @@ def draw_board(screen, selected_piece=None, valid_moves=None, last_move=None):
             s = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
             s.set_alpha(160)
             s.fill(VALID_MOVE_HIGHLIGHT)
-            screen.blit(s, (col * SQUARE_SIZE, row * SQUARE_SIZE))
+            screen.blit(s, (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                          row * SQUARE_SIZE + BOARD_OFFSET_Y))
             # Draw a border around valid move squares
-            pygame.draw.rect(screen, BLACK, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 2)
+            pygame.draw.rect(screen, BLACK, (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                                           row * SQUARE_SIZE + BOARD_OFFSET_Y,
+                                           SQUARE_SIZE, SQUARE_SIZE), 2)
    
     # Draw selected piece highlight with better visibility
     if selected_piece:
@@ -563,9 +664,12 @@ def draw_board(screen, selected_piece=None, valid_moves=None, last_move=None):
         s = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
         s.set_alpha(180)
         s.fill(SELECTED_PIECE)
-        screen.blit(s, (col * SQUARE_SIZE, row * SQUARE_SIZE))
+        screen.blit(s, (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                       row * SQUARE_SIZE + BOARD_OFFSET_Y))
         # Draw a border around selected piece
-        pygame.draw.rect(screen, BLACK, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 3)
+        pygame.draw.rect(screen, BLACK, (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                                       row * SQUARE_SIZE + BOARD_OFFSET_Y,
+                                       SQUARE_SIZE, SQUARE_SIZE), 3)
    
     # Draw pieces
     for row in range(BOARD_SIZE):
@@ -575,8 +679,8 @@ def draw_board(screen, selected_piece=None, valid_moves=None, last_move=None):
                 color = WHITE if piece[0] == 'white' else BLACK
                 font = pygame.font.SysFont('segoeuisymbol', SQUARE_SIZE // 2)
                 text = font.render(PIECES[piece[0]][piece[1]], True, color)
-                text_rect = text.get_rect(center=(col * SQUARE_SIZE + SQUARE_SIZE // 2,
-                                                row * SQUARE_SIZE + SQUARE_SIZE // 2))
+                text_rect = text.get_rect(center=(col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2 + SQUARE_SIZE // 2,
+                                                row * SQUARE_SIZE + BOARD_OFFSET_Y + SQUARE_SIZE // 2))
                 screen.blit(text, text_rect)
                
                 # Highlight king in red if in check
@@ -584,13 +688,29 @@ def draw_board(screen, selected_piece=None, valid_moves=None, last_move=None):
                     s = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
                     s.set_alpha(180)
                     s.fill(CHECKED_KING)
-                    screen.blit(s, (col * SQUARE_SIZE, row * SQUARE_SIZE))
-                    pygame.draw.rect(screen, (255, 0, 0), (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 3)
+                    screen.blit(s, (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                                  row * SQUARE_SIZE + BOARD_OFFSET_Y))
+                    pygame.draw.rect(screen, (255, 0, 0), (col * SQUARE_SIZE + (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2,
+                                                         row * SQUARE_SIZE + BOARD_OFFSET_Y,
+                                                         SQUARE_SIZE, SQUARE_SIZE), 3)
  
 def get_board_position(pos):
     x, y = pos
+    # Adjust coordinates to account for board offset
+    x = x - (WINDOW_SIZE - BOARD_SIZE * SQUARE_SIZE) // 2
+    y = y - BOARD_OFFSET_Y
+    
+    # Check if the click is within the board boundaries
+    if x < 0 or x >= BOARD_SIZE * SQUARE_SIZE or y < 0 or y >= BOARD_SIZE * SQUARE_SIZE:
+        return None
+        
     row = y // SQUARE_SIZE
     col = x // SQUARE_SIZE
+    
+    # Ensure the position is within the board
+    if row < 0 or row >= BOARD_SIZE or col < 0 or col >= BOARD_SIZE:
+        return None
+        
     return row, col
  
 def is_valid_move(start, end, piece):
@@ -729,26 +849,41 @@ def get_raw_moves(board, start_pos, piece):
  
 # Modify the game loop to handle check and checkmate
 def draw_game_status(screen, current_player, is_check, is_mate):
-    font = pygame.font.SysFont('Arial', 32)  # Increased font size
+    # Draw player names at top and bottom
+    font = pygame.font.SysFont('Arial', 32)
+    
+    # Draw white player name at top in white color
+    white_text = font.render(player1_name, True, WHITE)
+    white_rect = white_text.get_rect(center=(WINDOW_SIZE // 2, 25))
+    screen.blit(white_text, white_rect)
+    
+    # Draw black player name at bottom in white color
+    black_text = font.render(player2_name if game_mode == "player" else "AI", True, WHITE)
+    black_rect = black_text.get_rect(center=(WINDOW_SIZE // 2, WINDOW_SIZE - 25))
+    screen.blit(black_text, black_rect)
+    
+    # Draw game status (check/checkmate)
     status_text = ""
     text_color = BLACK
-   
+    
     if is_mate:
-        winner = 'Black' if current_player == 'white' else 'White'
+        winner = player2_name if current_player == 'white' else player1_name
+        if game_mode == "ai" and current_player == 'white':
+            winner = "AI"
         status_text = f"Checkmate! {winner} wins!"
     elif is_check:
-        status_text = f"{current_player.capitalize()} is in CHECK!"
+        status_text = f"{player1_name if current_player == 'white' else player2_name} is in CHECK!"
         text_color = (255, 0, 0)  # Red color for check warning
    
     if status_text:
         text_surface = font.render(status_text, True, text_color)
-        text_rect = text_surface.get_rect(center=(WINDOW_SIZE // 2, 30))
+        text_rect = text_surface.get_rect(center=(WINDOW_SIZE // 2, BOARD_OFFSET_Y - 10))
         # Draw background for text with padding
         bg_rect = text_rect.copy()
-        bg_rect.inflate_ip(40, 20)  # Increased padding
+        bg_rect.inflate_ip(40, 20)
         pygame.draw.rect(screen, WHITE, bg_rect)
         if is_check:
-            pygame.draw.rect(screen, (255, 0, 0), bg_rect, 2)  # Red border for check
+            pygame.draw.rect(screen, (255, 0, 0), bg_rect, 2)
         else:
             pygame.draw.rect(screen, BLACK, bg_rect, 1)
         screen.blit(text_surface, text_rect)
@@ -760,13 +895,13 @@ current_player = 'white'
 valid_moves = None
 ai_thinking = False
  
-# Menu loop to choose game mode
-game_mode, ai_difficulty = menu_loop()
+# Menu loop to choose game mode and get player names
+game_mode, ai_difficulty, player1_name, player2_name = menu_loop()
  
 # Add difficulty-based depth for minimax
 AI_DEPTH = {
     "easy": 1,    # Reduced from 2 to 1 for easier gameplay
-    "medium": 3,
+    "medium": 2,
     "hard": 4
 }
 
@@ -793,6 +928,11 @@ while running:
                 last_move = None
         elif event.type == pygame.MOUSEBUTTONDOWN and not ai_thinking:
             pos = get_board_position(event.pos)
+            if pos is None:  # Click was outside the board
+                selected_piece = None
+                valid_moves = None
+                continue
+                
             if event.button == 1:  # Left click
                 if selected_piece is None:
                     piece = board[pos[0]][pos[1]]
