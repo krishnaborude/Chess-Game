@@ -883,31 +883,29 @@ def get_raw_moves(board, start_pos, piece):
     return valid_moves
  
 # Modify the game loop to handle check and checkmate
-def draw_game_status(screen, current_player, is_check, is_mate):
-    # Draw player names at top and bottom
+def draw_game_status(screen, current_player, is_check, is_mate, player1_name, player2_name):
     font = pygame.font.SysFont('Arial', 32)
-    
-    # Draw white player name at top in white color
+
+    # Draw player names
     white_text = font.render(player1_name, True, WHITE)
     white_rect = white_text.get_rect(center=(WINDOW_SIZE // 2, 25))
     screen.blit(white_text, white_rect)
-    
-    # Draw black player name at bottom in white color
-    black_text = font.render("AI", True, WHITE)
+
+    black_text = font.render(player2_name, True, WHITE)
     black_rect = black_text.get_rect(center=(WINDOW_SIZE // 2, WINDOW_SIZE - 25))
     screen.blit(black_text, black_rect)
-    
+
     # Draw game status (check/checkmate)
     status_text = ""
     text_color = BLACK
-    
+
     if is_mate:
-        winner = "AI" if current_player == 'white' else player1_name
+        winner = player2_name if current_player == 'white' else player1_name
         status_text = f"Checkmate! {winner} wins!"
     elif is_check:
-        status_text = f"{player1_name if current_player == 'white' else 'AI'} is in CHECK!"
+        status_text = f"{player1_name if current_player == 'white' else player2_name} is in CHECK!"
         text_color = (255, 0, 0)  # Red color for check warning
-   
+
     if status_text:
         text_surface = font.render(status_text, True, text_color)
         text_rect = text_surface.get_rect(center=(WINDOW_SIZE // 2, BOARD_OFFSET_Y - 10))
@@ -1062,7 +1060,7 @@ while running:
        
         # Draw the game state
         draw_board(screen, selected_piece, None, last_move)
-        draw_game_status(screen, current_player, in_check, in_checkmate)
+        draw_game_status(screen, current_player, in_check, in_checkmate, player1_name, player2_name)
    
     show_fps(screen, clock)
     pygame.display.flip()
