@@ -200,6 +200,7 @@ def draw_menu():
         shadow = font_title.render("Chess Game", True, (0, 0, 0))
         shadow_rect = shadow.get_rect(center=(WINDOW_SIZE // 2 + offset, MENU_MARGIN + 102 + offset))
         screen.blit(shadow, shadow_rect)
+    # Main text with gradient effect
     title = font_title.render("Chess Game", True, MENU_TITLE_COLOR)
     title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 100))
     screen.blit(title, title_rect)
@@ -221,13 +222,12 @@ def draw_menu():
     start_button = Button(WINDOW_SIZE//2 - 150, 0, 300, 60, "Start Game", MENU_BUTTON_BG)  # Width increased for better proportion
    
     return player_button, ai_button, start_button
-
+ 
 def menu_loop():
     player_button, ai_button, start_button = draw_menu()
     game_mode = None
     ai_difficulty = None
     clock = pygame.time.Clock()
-    
     current_page = "main"  # Track which page we're on
     player1_name = "Player 1"
     player2_name = "Player 2"
@@ -245,9 +245,6 @@ def menu_loop():
     
     player1_input = TextInput(WINDOW_SIZE//2 - input_width//2, start_y, input_width, input_height, "Player 1", "White Player")
     player2_input = TextInput(WINDOW_SIZE//2 - input_width//2, start_y + input_height + input_spacing, input_width, input_height, "Player 2", "Black Player")
-    
-    # Create text input field for AI player name
-    ai_player_input = TextInput(WINDOW_SIZE//2 - input_width//2, start_y, input_width, input_height, "Player 1", "Your Name")
     
     # Create difficulty buttons
     button_width = 300
@@ -300,6 +297,25 @@ def menu_loop():
             player_button.draw(screen)
             ai_button.draw(screen)
             
+        elif current_page == "player_names":
+            # Draw back button
+            back_button.draw(screen)
+            
+            # Draw title
+            font_title = pygame.font.SysFont('Arial', 48, bold=True)
+            title = font_title.render("Enter Player Names", True, MENU_TITLE_COLOR)
+            title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 50))
+            screen.blit(title, title_rect)
+            
+            # Draw input fields with labels
+            player1_input.draw(screen)
+            player2_input.draw(screen)
+            
+            # Always show start button since we have default names
+            start_button.rect.centerx = WINDOW_SIZE // 2
+            start_button.rect.top = player2_input.rect.bottom + 40
+            start_button.draw(screen)
+            
         elif current_page == "difficulty":
             # Draw back button
             back_button.draw(screen)
@@ -319,43 +335,6 @@ def menu_loop():
                 start_button.rect.centerx = WINDOW_SIZE // 2
                 start_button.rect.top = hard_button.rect.bottom + 40
                 start_button.draw(screen)
-                
-        elif current_page == "player_names_ai":
-            # Draw back button
-            back_button.draw(screen)
-            
-            # Draw title
-            font_title = pygame.font.SysFont('Arial', 48, bold=True)
-            title = font_title.render("Enter Your Name for AI Game", True, MENU_TITLE_COLOR)
-            title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 50))
-            screen.blit(title, title_rect)
-            
-            # Draw input field with label
-            ai_player_input.draw(screen)
-            
-            # Always show start button since we have default names
-            start_button.rect.centerx = WINDOW_SIZE // 2
-            start_button.rect.top = ai_player_input.rect.bottom + 40
-            start_button.draw(screen)
-            
-        elif current_page == "player_names":
-            # Draw back button
-            back_button.draw(screen)
-            
-            # Draw title
-            font_title = pygame.font.SysFont('Arial', 48, bold=True)
-            title = font_title.render("Enter Player Names", True, MENU_TITLE_COLOR)
-            title_rect = title.get_rect(center=(WINDOW_SIZE // 2, MENU_MARGIN + 50))
-            screen.blit(title, title_rect)
-            
-            # Draw input fields with labels
-            player1_input.draw(screen)
-            player2_input.draw(screen)
-            
-            # Always show start button since we have default names
-            start_button.rect.centerx = WINDOW_SIZE // 2
-            start_button.rect.top = player2_input.rect.bottom + 40
-            start_button.draw(screen)
        
         pygame.display.flip()
        
@@ -373,12 +352,22 @@ def menu_loop():
                         current_page = "player_names"
                         player_button.selected = True
                         ai_button.selected = False
+                    
                     elif ai_button.rect.collidepoint(mouse_pos):
                         game_mode = "ai"
                         current_page = "difficulty"
                         ai_button.selected = True
                         player_button.selected = False
                         
+                elif current_page == "player_names":
+                    if back_button.rect.collidepoint(mouse_pos):
+                        current_page = "main"
+                        game_mode = None
+                    elif start_button.rect.collidepoint(mouse_pos):
+                        player1_name = player1_input.text if player1_input.text != "" else "Player 1"
+                        player2_name = player2_input.text if player2_input.text != "" else "Player 2"
+                        return game_mode, None, player1_name, player2_name
+                    
                 elif current_page == "difficulty":
                     if back_button.rect.collidepoint(mouse_pos):
                         current_page = "main"
@@ -395,32 +384,12 @@ def menu_loop():
                             button.selected = True
                     
                     if ai_difficulty and start_button.rect.collidepoint(mouse_pos):
-                        current_page = "player_names_ai"
-                        
-                elif current_page == "player_names_ai":
-                    if back_button.rect.collidepoint(mouse_pos):
-                        current_page = "difficulty"
-                        game_mode = None
-                        ai_difficulty = None
-                    elif start_button.rect.collidepoint(mouse_pos):
-                        player1_name = ai_player_input.text if ai_player_input.text != "" else "Player 1"
-                        return "ai", ai_difficulty, player1_name, "AI"
-                    
-                elif current_page == "player_names":
-                    if back_button.rect.collidepoint(mouse_pos):
-                        current_page = "main"
-                        game_mode = None
-                    elif start_button.rect.collidepoint(mouse_pos):
-                        player1_name = player1_input.text if player1_input.text != "" else "Player 1"
-                        player2_name = player2_input.text if player2_input.text != "" else "Player 2"
-                        return game_mode, None, player1_name, player2_name
+                        return game_mode, ai_difficulty, None, None
             
             # Handle text input events
             if current_page == "player_names":
                 player1_input.handle_event(event)
                 player2_input.handle_event(event)
-            elif current_page == "player_names_ai":
-                ai_player_input.handle_event(event)
            
             # Update hover states
             if event.type == pygame.MOUSEMOTION:
@@ -431,10 +400,6 @@ def menu_loop():
                     ai_button.hover = ai_button.rect.collidepoint(mouse_pos)
                 
                 elif current_page == "player_names":
-                    back_button.hover = back_button.rect.collidepoint(mouse_pos)
-                    start_button.hover = start_button.rect.collidepoint(mouse_pos)
-                
-                elif current_page == "player_names_ai":
                     back_button.hover = back_button.rect.collidepoint(mouse_pos)
                     start_button.hover = start_button.rect.collidepoint(mouse_pos)
                 
@@ -883,29 +848,33 @@ def get_raw_moves(board, start_pos, piece):
     return valid_moves
  
 # Modify the game loop to handle check and checkmate
-def draw_game_status(screen, current_player, is_check, is_mate, player1_name, player2_name):
+def draw_game_status(screen, current_player, is_check, is_mate):
+    # Draw player names at top and bottom
     font = pygame.font.SysFont('Arial', 32)
-
-    # Draw player names
+    
+    # Draw white player name at top in white color
     white_text = font.render(player1_name, True, WHITE)
     white_rect = white_text.get_rect(center=(WINDOW_SIZE // 2, 25))
     screen.blit(white_text, white_rect)
-
-    black_text = font.render(player2_name, True, WHITE)
+    
+    # Draw black player name at bottom in white color
+    black_text = font.render(player2_name if game_mode == "player" else "AI", True, WHITE)
     black_rect = black_text.get_rect(center=(WINDOW_SIZE // 2, WINDOW_SIZE - 25))
     screen.blit(black_text, black_rect)
-
+    
     # Draw game status (check/checkmate)
     status_text = ""
     text_color = BLACK
-
+    
     if is_mate:
         winner = player2_name if current_player == 'white' else player1_name
+        if game_mode == "ai" and current_player == 'white':
+            winner = "AI"
         status_text = f"Checkmate! {winner} wins!"
     elif is_check:
         status_text = f"{player1_name if current_player == 'white' else player2_name} is in CHECK!"
         text_color = (255, 0, 0)  # Red color for check warning
-
+   
     if status_text:
         text_surface = font.render(status_text, True, text_color)
         text_rect = text_surface.get_rect(center=(WINDOW_SIZE // 2, BOARD_OFFSET_Y - 10))
@@ -925,21 +894,21 @@ selected_piece = None
 current_player = 'white'
 valid_moves = None
 ai_thinking = False
-
+ 
 # Menu loop to choose game mode and get player names
 game_mode, ai_difficulty, player1_name, player2_name = menu_loop()
-
+ 
 # Add difficulty-based depth for minimax
 AI_DEPTH = {
     "easy": 1,    # Reduced from 2 to 1 for easier gameplay
-    "medium": 3,  # Default depth
-    "hard": 4     # Increased depth for harder gameplay
+    "medium": 2,
+    "hard": 4
 }
 
 # Optimize the game loop
 running = True
 clock = pygame.time.Clock()
-
+ 
 # Add last_move tracking to store the last move made
 last_move = None
  
@@ -954,14 +923,14 @@ while running:
                 board = create_board()
                 selected_piece = None
                 current_player = 'white'
-                game_started = False
-                player1_name = ""
-                player2_name = ""
+                valid_moves = None
+                ai_thinking = False
                 last_move = None
         elif event.type == pygame.MOUSEBUTTONDOWN and not ai_thinking:
             pos = get_board_position(event.pos)
             if pos is None:  # Click was outside the board
                 selected_piece = None
+                valid_moves = None
                 continue
                 
             if event.button == 1:  # Left click
@@ -969,11 +938,13 @@ while running:
                     piece = board[pos[0]][pos[1]]
                     if piece and piece[0] == current_player:
                         selected_piece = pos
+                        valid_moves = get_valid_moves(board, pos, piece)
                 else:
                     piece = board[selected_piece[0]][selected_piece[1]]
                     # Check if clicking on the same piece
                     if pos == selected_piece:
                         selected_piece = None
+                        valid_moves = None
                     # Check if clicking on a valid move
                     elif is_valid_move(selected_piece, pos, piece):
                         # Make the move
@@ -984,11 +955,14 @@ while running:
                         # Switch player
                         current_player = 'black' if current_player == 'white' else 'white'
                         selected_piece = None
+                        valid_moves = None
                     # Click on different piece of same color
                     elif board[pos[0]][pos[1]] and board[pos[0]][pos[1]][0] == current_player:
                         selected_piece = pos
+                        valid_moves = get_valid_moves(board, pos, board[pos[0]][pos[1]])
             elif event.button == 3:  # Right click to deselect
                 selected_piece = None
+                valid_moves = None
    
     # Check game state
     in_check = is_in_check(board, current_player)
@@ -997,7 +971,7 @@ while running:
    
     # If game is over, show message and wait for restart
     if in_checkmate or in_stalemate:
-        draw_board(screen, selected_piece, None, last_move)
+        draw_board(screen, selected_piece, valid_moves, last_move)
         if in_checkmate:
             winner = 'Black' if current_player == 'white' else 'White'
             status_text = f"Checkmate! {winner} wins!"
@@ -1014,14 +988,20 @@ while running:
         screen.blit(restart_text, restart_rect)
     else:
         # If playing against AI, make AI move
-        if current_player == 'black' and not ai_thinking:
+        if current_player == 'black' and not ai_thinking and game_mode == 'ai':
             ai_thinking = True
             
-            # Calculate AI move with appropriate depth based on difficulty
-            depth = AI_DEPTH.get("medium", 3)
-            _, best_move = minimax(board, depth, float('-inf'), float('inf'), False)
-            if best_move:
-                start_pos, end_pos = best_move
+            if ai_difficulty == "easy":
+                # Use simple random moves for easy mode
+                success, move = make_easy_ai_move(board)
+                if success:
+                    start_pos, end_pos = move
+            else:
+                # Calculate AI move with appropriate depth based on difficulty
+                depth = AI_DEPTH.get(ai_difficulty, 3)
+                _, best_move = minimax(board, depth, float('-inf'), float('inf'), False)
+                if best_move:
+                    start_pos, end_pos = best_move
             
             if 'start_pos' in locals() and 'end_pos' in locals():
                 # Add small delay before showing move
@@ -1059,8 +1039,8 @@ while running:
             ai_thinking = False
        
         # Draw the game state
-        draw_board(screen, selected_piece, None, last_move)
-        draw_game_status(screen, current_player, in_check, in_checkmate, player1_name, player2_name)
+        draw_board(screen, selected_piece, valid_moves, last_move)
+        draw_game_status(screen, current_player, in_check, in_checkmate)
    
     show_fps(screen, clock)
     pygame.display.flip()
@@ -1068,3 +1048,5 @@ while running:
  
 pygame.quit()
 sys.exit()
+ 
+ 
